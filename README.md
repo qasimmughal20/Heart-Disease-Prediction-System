@@ -9,14 +9,6 @@
 This system takes 13 medical parameters as input and predicts whether a patient has heart disease.
 It features a modern GUI, admin dashboard, and automated PDF report generation.
 
-| Feature | Status |
-|---------|--------|
-| Patient Portal | ✅ Complete |
-| Admin Dashboard | ✅ Complete |
-| PDF Reports | ✅ Complete |
-| ML Model (Random Forest) | ✅ 85% Accuracy |
-| Data Visualizations | ✅ 15+ Charts |
-
 ---
 
 ## ✨ Key Features
