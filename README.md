@@ -1,4 +1,4 @@
-# 🫀 Heart Disease Prediction System
+## Heart Disease Prediction System
 
 > An AI-powered desktop application that predicts heart disease risk using Machine Learning with **85% accuracy**.
 
@@ -48,38 +48,6 @@ It features a modern GUI, admin dashboard, and automated PDF report generation.
 - ROC curve comparison
 - Model accuracy comparison
 - t-SNE & UMAP visualization
-
----
-
-## 🧠 Machine Learning Models
-
-|        Model        | Accuracy | Precision | Recall | F1 Score | AUC  |
-|---------------------|----------|-----------|--------|----------|------|
-| Logistic Regression |   82%    |   81%     |   83%  |   82%    | 0.88 |
-| Random Forest       |   85%    |   84%     |   86%  |   85%    | 0.90 |
-
-**Best Model:** Random Forest Classifier (used in GUI)
-
----
-
-## 📊 Dataset Features
-
-| Feature | Description | Values |
-|---------|-------------|--------|
-| age | Patient age | 29-77 years |
-| sex | Gender | 0=Female, 1=Male |
-| cp | Chest pain type | 0-3 |
-| trestbps | Resting BP | 94-200 mmHg |
-| chol | Cholesterol | 126-564 mg/dl |
-| fbs | Fasting blood sugar | 0=False, 1=True |
-| restecg | Resting ECG | 0-2 |
-| thalach | Max heart rate | 71-202 |
-| exang | Exercise angina | 0=No, 1=Yes |
-| oldpeak | ST depression | 0-6.2 |
-| slope | Slope type | 0-2 |
-| ca | Major vessels | 0-3 |
-| thal | Thalassemia | 1-3 |
-| target | Diagnosis | 0=No Disease, 1=Disease |
 
 ---
 
