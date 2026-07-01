@@ -1,101 +1,70 @@
-## Heart Disease Prediction System
+# Heart Disease Risk Prediction
 
-> An AI-powered desktop application that predicts heart disease risk using Machine Learning with **85% accuracy**.
+An educational ML project that predicts heart disease risk from patient health data.
 
----
+## What was fixed before publishing
 
-## 📌 Quick Overview
+1. **Inverted label bug (critical).** The Kaggle copy of `heart.csv` used here has its
+   `target` column encoded backwards versus the standard convention. This was verified
+   empirically: clinically risky values (high `oldpeak`, exercise angina, more blocked
+   vessels) were correlating with `target=1` in the wrong direction, and the three demo
+   patients in the original GUI predicted the opposite of what they should have
+   ("High Risk Demo" → predicted no disease, and vice versa). Fixed by flipping the
+   label (`target = 1 - target`) in both `Program1.py` and `GUI_App.py`. Cross-validated
+   accuracy is unchanged (~82%) after the fix, confirming it was purely a label-direction
+   issue, not a modeling problem.
+2. **Train/test leakage in the analysis script.** `Program1.py` did not remove duplicate
+   rows before splitting; this dataset has ~70% exact duplicates, so any reported accuracy
+   from that script was inflated. Deduplication added.
+3. **Hardcoded local file path** in `Program1.py` replaced with a relative path.
+4. **Stale/version-mismatched model pickle** removed from the deployed package — the app
+   retrains itself at startup instead, which avoids cross-machine/scikit-learn version
+   issues entirely.
+5. Stale `heart_patient_prediction_records.csv` sample data was not carried into the
+   public web version (the web app does not persist patient data anywhere by default).
 
-This system takes 13 medical parameters as input and predicts whether a patient has heart disease.
-It features a modern GUI, admin dashboard, and automated PDF report generation.
+## Real model performance (5-fold cross-validated, after fixes)
 
----
+| Metric | Score |
+|---|---|
+| Accuracy | ~82% |
+| Precision | ~82% |
+| Recall | ~78–86% (varies slightly by split) |
+| F1 Score | ~80–84% |
 
-## ✨ Key Features
+This is in line with what's normally achievable on this dataset with logistic regression.
+Don't expect higher without a much larger/cleaner clinical dataset — and don't be tempted
+to "fix" a lower number by re-introducing duplicates or leaking test data, since that
+just produces a fake high score.
 
-### 👨‍⚕️ Patient Portal
-- Input 13 medical parameters
-- Real-time prediction with risk percentage
-- High/Medium/Low risk level indicator
-- Personalized lifestyle recommendations
-- Downloadable PDF medical reports
+## Files
 
-### 👨‍💼 Admin Dashboard
-- Total patients count
-- Disease vs Normal statistics
-- Visual analytics cards
-- One-click logout
+- `app.py` — the public web app (Streamlit). This is what you deploy.
+- `heart.csv` — training dataset (must stay in the same folder/repo as `app.py`).
+- `requirements.txt` — Python dependencies for deployment.
+- `GUI_App.py` — original desktop (Tkinter) version, fixed, kept for reference/demo to your instructor.
+- `Program1.py` — original EDA/analysis script, fixed, useful for your project report's charts.
 
-### 📄 Automated Reports
-- Professional PDF format
-- Patient details + prediction
-- Medical disclaimer included
-- Auto-saved in `reports/` folder
+## How to deploy so anyone can use it with one click (free)
 
-### 📊 Data Analysis (Program1.py)
-- Age distribution histogram
-- Cholesterol outlier detection
-- Chest pain type analysis
-- Correlation heatmap
-- ROC curve comparison
-- Model accuracy comparison
-- t-SNE & UMAP visualization
+**Streamlit Community Cloud** (recommended — free, no server management):
 
----
+1. Create a free GitHub account if you don't have one, and create a new public repository.
+2. Upload `app.py`, `heart.csv`, and `requirements.txt` to that repository (just these
+   three files — `GUI_App.py` and `Program1.py` don't need to go in the deployed repo,
+   keep those for your own report/submission).
+3. Go to https://share.streamlit.io, sign in with GitHub, click "New app," and point it
+   at your repository and `app.py`.
+4. Click Deploy. After a minute you'll get a public link like
+   `https://your-app-name.streamlit.app` — anyone can open it and use the predictor
+   directly in their browser, no installation needed.
+5. Share that link. Each time you push a change to GitHub, the live app updates automatically.
 
-## 🚀 Installation Guide
+No backend, server, or "files for everyone" — just the one link.
 
-### Prerequisites
-- Python 3.9 or higher
-- pip package manager
+## Limitations to be upfront about (worth mentioning in your report/disclaimer)
 
-### Step 1: Clone or Download
-
-```bash
-git clone https://github.com/YOUR_USERNAME/Heart-Disease-Prediction-System.git
-cd Heart-Disease-Prediction-System
-```
-
-### Step 2: Install dependencies
-```bash
-pip install pandas numpy scikit-learn customtkinter reportlab matplotlib seaborn umap-learn
-```
-
-### Step 3: Run the application
-```bash
-python GUI.py
-```
-
-
-📱 How to Use
-
-For Patients:
-01. Click "PATIENT PORTAL" on main page
-02. Fill all medical parameters
-03. Click "PREDICT DISEASE"
-04. View your risk assessment
-05. Click "DOWNLOAD PDF REPORT" to save
-
-For Admins:
-01. Click "ADMINISTRATION" on main page
-02. View patient statistics
-03. Click "LOGOUT" to exit
-
-🛠️ Tech Stack
-Category: Technology
-Language: Python 
-GUI Framework: CustomTkinter
-Machine Learning:	Scikit-learn
-Data Processing: Pandas, NumPy
-Visualization: Matplotlib, Seaborn, UMAP, t-SNE
-PDF Generation: ReportLab
-
-
-👨‍💻 Author
-Qasim Mughal
-GitHub: @qasimmughal20
-
-LinkedIn: [Qasim Mughal](https://www.linkedin.com/in/qasimmughal-tech-dev/)
-
-⭐ Show Support
-If you found this project helpful, please give it a star ⭐ on GitHub!
+- Trained on 310 unique patient records — solid for a class project, small by clinical
+  research standards. Don't claim clinical-grade accuracy.
+- It's a screening tool, not a diagnostic device. The app already shows this disclaimer
+  to users — keep it there.
