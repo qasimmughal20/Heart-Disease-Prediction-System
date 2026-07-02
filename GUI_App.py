@@ -189,13 +189,8 @@ class ModelManager:
         clean = clean.dropna(subset=[y_col])
         clean[y_col] = (clean[y_col].astype(float) > 0).astype(int)
         clean = clean.drop_duplicates(subset=FEATURES + [y_col]).reset_index(drop=True)
-        # IMPORTANT LABEL FIX: in this specific Kaggle copy of heart.csv (1025-row version),
-        # the target column is encoded backwards relative to the standard UCI convention.
-        # Verified empirically: clinically risky values (high oldpeak, exercise angina,
-        # more blocked vessels) correlate with target=1 the WRONG way round, and
-        # cross-validated accuracy is identical after flipping (~82%), confirming this is
-        # just a label-direction issue, not a real pattern. Flip so 1 = heart disease present.
-        clean[y_col] = 1 - clean[y_col]
+        # No label flip needed — the merged heart.csv (1,228 rows from 5 UCI sources)
+        # has correctly encoded labels: 1 = heart disease present, 0 = no heart disease.
 
         X = clean[FEATURES]
         y = clean[y_col]

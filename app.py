@@ -162,11 +162,25 @@ html, body, [data-testid="stAppViewContainer"] {
     width:100% !important;
 }
 .stButton>button:hover { background:linear-gradient(135deg,#1e40af,#1d4ed8) !important; transform:translateY(-1px) !important; }
-.btn-clear>button { background:linear-gradient(135deg,#475569,#64748b) !important; }
-.btn-pdf>button   { background:linear-gradient(135deg,#059669,#10b981) !important; }
-.btn-high>button  { background:linear-gradient(135deg,#dc2626,#ef4444) !important; }
-.btn-mid>button   { background:linear-gradient(135deg,#d97706,#f59e0b) !important; }
-.btn-low>button   { background:linear-gradient(135deg,#16a34a,#22c55e) !important; }
+.btn-clear>button { background:linear-gradient(135deg,#475569,#64748b) !important; color:#fff !important; }
+.btn-pdf>button   { background:linear-gradient(135deg,#059669,#10b981) !important; color:#fff !important; }
+.btn-high>button  { background:linear-gradient(135deg,#dc2626,#ef4444) !important; color:#fff !important; }
+.btn-mid>button   { background:linear-gradient(135deg,#d97706,#f59e0b) !important; color:#fff !important; }
+.btn-low>button   { background:linear-gradient(135deg,#16a34a,#22c55e) !important; color:#fff !important; }
+
+/* Download buttons (stDownloadButton) — always white text, green background */
+[data-testid="stDownloadButton"]>button {
+    background: linear-gradient(135deg,#059669,#10b981) !important;
+    color:#fff !important; border:none !important; border-radius:10px !important;
+    font-weight:700 !important; font-size:0.95rem !important; padding:10px 20px !important;
+    box-shadow:0 4px 14px rgba(5,150,105,0.3) !important; width:100% !important;
+    transition:all .2s !important;
+}
+[data-testid="stDownloadButton"]>button:hover {
+    background: linear-gradient(135deg,#047857,#059669) !important;
+    color:#fff !important; transform:translateY(-1px) !important;
+}
+[data-testid="stDownloadButton"]>button * { color:#fff !important; }
 
 .admin-stat { background:#fff; border-radius:12px; padding:16px 20px; text-align:center;
               box-shadow:0 2px 10px rgba(0,0,0,0.06); border-top:3px solid #7c3aed; }
@@ -196,7 +210,7 @@ def train_model():
     clean = clean.dropna(subset=["target"])
     clean["target"] = (clean["target"].astype(float)>0).astype(int)
     clean = clean.drop_duplicates(subset=FEATURES+["target"]).reset_index(drop=True)
-    clean["target"] = 1 - clean["target"]   # label-flip fix
+    # Note: label flip removed — new merged heart.csv has correct labels (1=disease, 0=no disease)
     X, y = clean[FEATURES], clean["target"]
     pipe = Pipeline([
         ("imp", SimpleImputer(strategy="median")),
@@ -337,6 +351,7 @@ with st.sidebar:
     <div style='font-size:0.78rem;color:#94a3b8;text-align:center;line-height:1.8;'>
       Model: Logistic Regression<br>
       Dataset: {n_rows} unique patients<br>
+      Sources: Cleveland · Hungary · Switzerland · VA Long Beach · Statlog<br>
       CV Accuracy: <b style='color:#60a5fa;'>{metrics['acc']}%</b><br>
       5-Fold Stratified CV
     </div>
@@ -360,99 +375,104 @@ if st.session_state.page == "🏥 Prediction":
     </div>
     """, unsafe_allow_html=True)
 
-    # Model metrics row
-    st.markdown(f"""
-    <div class='metric-row'>
-      <div class='metric-card'><div class='metric-val'>{metrics['acc']}%</div><div class='metric-lbl'>Accuracy</div></div>
-      <div class='metric-card'><div class='metric-val'>{metrics['prec']}%</div><div class='metric-lbl'>Precision</div></div>
-      <div class='metric-card'><div class='metric-val'>{metrics['rec']}%</div><div class='metric-lbl'>Recall</div></div>
-      <div class='metric-card'><div class='metric-val'>{metrics['f1']}%</div><div class='metric-lbl'>F1 Score</div></div>
-      <div class='metric-card'><div class='metric-val'>{n_rows}</div><div class='metric-lbl'>Training Patients</div></div>
-    </div>
-    """, unsafe_allow_html=True)
+    # Model metrics moved to Admin Dashboard
 
     left, right = st.columns([1.55, 1], gap="large")
 
     with left:
-        # ── Patient Info ────────────────────────────────────────────────────
-        st.markdown("<div class='section-card'>", unsafe_allow_html=True)
-        st.markdown("<div class='section-title'>👤 Patient Information</div>", unsafe_allow_html=True)
-        pc1, pc2 = st.columns(2)
         demo = st.session_state.demo_loaded or {}
-        p_name    = pc1.text_input("Patient Name *", value=demo.get("name",""))
-        p_contact = pc2.text_input("Contact Number *", value=demo.get("contact",""))
-        st.markdown("</div>", unsafe_allow_html=True)
 
-        # ── Clinical Data ───────────────────────────────────────────────────
-        st.markdown("<div class='section-card'>", unsafe_allow_html=True)
-        st.markdown("<div class='section-title'>🩺 Clinical Data</div>", unsafe_allow_html=True)
+        # ── Patient Info ─────────────────────────────────────────────────────
+        st.markdown("<p style='font-size:1.1rem;font-weight:700;color:#0f172a;margin:0 0 8px;'>👤 Patient Information</p>", unsafe_allow_html=True)
+        st.divider()
+        pc1, pc2 = st.columns(2)
+        p_name    = pc1.text_input("Patient Name *", value=demo.get("name",""), placeholder="Enter full name")
+        p_contact = pc2.text_input("Contact Number *", value=demo.get("contact",""), placeholder="e.g. 03001234567")
+
+        # ── Clinical Data ─────────────────────────────────────────────────────
+        st.markdown("<p style='font-size:1.1rem;font-weight:700;color:#0f172a;margin:18px 0 8px;'>🩺 Clinical Data</p>", unsafe_allow_html=True)
+        st.divider()
         c1, c2 = st.columns(2)
         with c1:
-            age      = st.number_input("Age",                    1,  120, int(demo.get("age",45)))
-            sex      = st.selectbox("Sex", [1,0], index=0 if demo.get("sex",1)==1 else 1,
-                                    format_func=lambda x:"Male" if x else "Female")
-            cp       = st.selectbox("Chest Pain Type", [0,1,2,3],
-                                    index=int(demo.get("cp",0)),
-                                    format_func=lambda x:["Typical Angina","Atypical Angina","Non-anginal","Asymptomatic"][x])
-            trestbps = st.number_input("Resting BP (mmHg)",     70,  250, int(demo.get("trestbps",120)))
-            chol     = st.number_input("Cholesterol (mg/dl)",   80,  700, int(demo.get("chol",200)))
-            fbs      = st.selectbox("Fasting Blood Sugar > 120",[0,1],
-                                    index=int(demo.get("fbs",0)),
-                                    format_func=lambda x:"Yes" if x else "No")
-            restecg  = st.selectbox("Resting ECG", [0,1,2],
-                                    index=int(demo.get("restecg",0)),
-                                    format_func=lambda x:["Normal","ST-T Abnormality","LV Hypertrophy"][x])
+            age      = st.number_input("Age (years)", 1, 120, int(demo.get("age", 1)))
+            sex      = st.selectbox("Sex", [1, 0],
+                                    index=0 if demo.get("sex", 1) == 1 else 1,
+                                    format_func=lambda x: "Male" if x else "Female")
+            # Chest Pain Type — null by default, user must choose
+            _cp_opts = [None, 0, 1, 2, 3]
+            _cp_default = demo.get("cp", None)
+            _cp_idx = _cp_opts.index(_cp_default) if _cp_default in _cp_opts else 0
+            cp = st.selectbox("Chest Pain Type *", _cp_opts,
+                              index=_cp_idx,
+                              format_func=lambda x: "— Select —" if x is None else
+                              ["Typical Angina","Atypical Angina","Non-anginal Pain","Asymptomatic"][x])
+            trestbps = st.number_input("Resting BP (mmHg)",    70,  250, int(demo.get("trestbps", 70)))
+            chol     = st.number_input("Cholesterol (mg/dl)",  80,  700, int(demo.get("chol", 80)))
+            fbs      = st.selectbox("Fasting Blood Sugar > 120 mg/dl", [0, 1],
+                                    index=int(demo.get("fbs", 0)),
+                                    format_func=lambda x: "Yes" if x else "No")
+            restecg  = st.selectbox("Resting ECG", [0, 1, 2],
+                                    index=int(demo.get("restecg", 0)),
+                                    format_func=lambda x: ["Normal","ST-T Abnormality","LV Hypertrophy"][x])
         with c2:
-            thalach  = st.number_input("Max Heart Rate",        60,  250, int(demo.get("thalach",150)))
-            exang    = st.selectbox("Exercise Angina", [0,1],
-                                    index=int(demo.get("exang",0)),
-                                    format_func=lambda x:"Yes" if x else "No")
-            oldpeak  = st.number_input("ST Depression",         0.0, 10.0, float(demo.get("oldpeak",1.0)), step=0.1)
-            slope    = st.selectbox("ST Slope", [0,1,2],
-                                    index=int(demo.get("slope",0)),
-                                    format_func=lambda x:["Upsloping","Flat","Downsloping"][x])
-            ca       = st.selectbox("Major Vessels (0-4)", [0,1,2,3,4], index=int(demo.get("ca",0)))
-            thal     = st.selectbox("Thalassemia", [0,1,2,3],
-                                    index=int(demo.get("thal",1)),
-                                    format_func=lambda x:["Unknown","Normal","Fixed Defect","Reversible Defect"][x])
-        st.markdown("</div>", unsafe_allow_html=True)
+            thalach  = st.number_input("Max Heart Rate (bpm)",  60,  250, int(demo.get("thalach", 60)))
+            exang    = st.selectbox("Exercise-Induced Angina", [0, 1],
+                                    index=int(demo.get("exang", 0)),
+                                    format_func=lambda x: "Yes" if x else "No")
+            oldpeak  = st.number_input("ST Depression (oldpeak)", 0.0, 10.0, float(demo.get("oldpeak", 0.0)), step=0.1)
+            # ST Slope — null by default, user must choose
+            _sl_opts = [None, 0, 1, 2]
+            _sl_default = demo.get("slope", None)
+            _sl_idx = _sl_opts.index(_sl_default) if _sl_default in _sl_opts else 0
+            slope = st.selectbox("ST Slope *", _sl_opts,
+                                 index=_sl_idx,
+                                 format_func=lambda x: "— Select —" if x is None else
+                                 ["Upsloping","Flat","Downsloping"][x])
+            ca       = st.selectbox("Major Vessels (0–4)", [0, 1, 2, 3, 4],
+                                    index=int(demo.get("ca", 0)))
+            thal     = st.selectbox("Thalassemia", [0, 1, 2, 3],
+                                    index=int(demo.get("thal", 0)),
+                                    format_func=lambda x: ["Unknown","Normal","Fixed Defect","Reversible Defect"][x])
 
-        # ── Buttons ─────────────────────────────────────────────────────────
-        b1, b2 = st.columns(2)
-        predict_clicked = b1.button("🔍 Predict Risk", type="primary")
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # ── Buttons ───────────────────────────────────────────────────────────
+        b1, b2 = st.columns([1, 1], gap="small")
+        with b1:
+            predict_clicked = st.button("🔍 Predict Risk", type="primary", use_container_width=True)
         with b2:
             st.markdown("<div class='btn-clear'>", unsafe_allow_html=True)
-            if st.button("🗑 Clear Form"):
+            clear_clicked = st.button("🗑 Clear Form", use_container_width=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+            if clear_clicked:
                 st.session_state.demo_loaded = None
                 st.session_state.last_report = None
                 st.rerun()
-            st.markdown("</div>", unsafe_allow_html=True)
 
-        # ── Demo Samples ────────────────────────────────────────────────────
-        st.markdown("<div class='section-card' style='padding:18px 24px;'>", unsafe_allow_html=True)
-        st.markdown("<div class='section-title'>🧪 Demo Sample Cases</div>", unsafe_allow_html=True)
+        # ── Demo Samples ──────────────────────────────────────────────────────
+        st.markdown("<p style='font-size:1.1rem;font-weight:700;color:#0f172a;margin:18px 0 8px;'>🧪 Demo Sample Cases</p>", unsafe_allow_html=True)
+        st.divider()
         d1, d2, d3 = st.columns(3)
         sample_items = list(SAMPLES.items())
         with d1:
             st.markdown("<div class='btn-high'>", unsafe_allow_html=True)
-            if st.button(sample_items[0][0]):
+            if st.button(sample_items[0][0], use_container_width=True):
                 st.session_state.demo_loaded = sample_items[0][1]; st.rerun()
             st.markdown("</div>", unsafe_allow_html=True)
         with d2:
             st.markdown("<div class='btn-mid'>", unsafe_allow_html=True)
-            if st.button(sample_items[1][0]):
+            if st.button(sample_items[1][0], use_container_width=True):
                 st.session_state.demo_loaded = sample_items[1][1]; st.rerun()
             st.markdown("</div>", unsafe_allow_html=True)
         with d3:
             st.markdown("<div class='btn-low'>", unsafe_allow_html=True)
-            if st.button(sample_items[2][0]):
+            if st.button(sample_items[2][0], use_container_width=True):
                 st.session_state.demo_loaded = sample_items[2][1]; st.rerun()
             st.markdown("</div>", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
 
     with right:
         # ── Result Card ─────────────────────────────────────────────────────
-        st.markdown("<div class='section-card' style='min-height:260px;'>", unsafe_allow_html=True)
+        st.markdown("<div style='min-height:260px;'>", unsafe_allow_html=True)
         report = st.session_state.last_report
         if report:
             lvl = report["level"]
@@ -482,15 +502,12 @@ if st.session_state.page == "🏥 Prediction":
 
         # ── Recommendations ─────────────────────────────────────────────────
         if report:
-            st.markdown("<div class='section-card'>", unsafe_allow_html=True)
-            st.markdown("<div class='section-title'>💊 Recommendations</div>", unsafe_allow_html=True)
+            st.markdown("<div class='section-title' style='margin-top:14px;'>💊 Recommendations</div>", unsafe_allow_html=True)
             for rec in report["recs"]:
                 st.markdown(f"<div class='rec-item'>• {rec}</div>", unsafe_allow_html=True)
-            st.markdown("</div>", unsafe_allow_html=True)
 
         # ── Comparison Chart ─────────────────────────────────────────────────
-        st.markdown("<div class='section-card'>", unsafe_allow_html=True)
-        st.markdown("<div class='section-title'>📊 Patient vs Normal Values</div>", unsafe_allow_html=True)
+        st.markdown("<div class='section-title' style='margin-top:14px;'>📊 Patient vs Normal Values</div>", unsafe_allow_html=True)
         if report:
             vals = report["values"]
             items_chart = [("BP",vals["trestbps"],120),("Chol",vals["chol"],200),
@@ -523,7 +540,6 @@ if st.session_state.page == "🏥 Prediction":
         else:
             st.markdown("<div style='text-align:center;color:#94a3b8;padding:20px 0;font-size:0.9rem;'>"
                         "Chart will appear after prediction</div>", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
 
         # ── Input Guide ──────────────────────────────────────────────────────
         with st.expander("📖 Input Reference Guide"):
@@ -568,12 +584,14 @@ if st.session_state.page == "🏥 Prediction":
         if not p_contact.strip(): errors.append("Contact number is required.")
         if not p_contact.replace("+","").replace("-","").replace(" ","").isdigit() and p_contact.strip():
             errors.append("Contact number should contain digits only.")
+        if cp is None:    errors.append("Please select a Chest Pain Type.")
+        if slope is None: errors.append("Please select an ST Slope value.")
         if errors:
             for e in errors: st.error(e)
         else:
-            values = dict(age=age,sex=sex,cp=cp,trestbps=trestbps,chol=chol,fbs=fbs,
+            values = dict(age=age,sex=sex,cp=int(cp),trestbps=trestbps,chol=chol,fbs=fbs,
                           restecg=restecg,thalach=thalach,exang=exang,oldpeak=oldpeak,
-                          slope=slope,ca=ca,thal=thal)
+                          slope=int(slope),ca=ca,thal=thal)
             pred, prob, level = predict(model, values)
             pred_text = "Heart Disease Risk Detected" if pred==1 else "No Heart Disease Risk Detected"
             alert = ("Immediate medical attention is recommended." if level=="High Risk"
@@ -595,45 +613,106 @@ elif st.session_state.page == "📋 Patient History":
     <div class='hero-banner'>
       <div class='hero-icon'>📋</div>
       <div>
-        <div class='hero-title'>Patient History</div>
-        <div class='hero-sub'>All previous prediction records</div>
+        <div class='hero-title'>My Prediction History</div>
+        <div class='hero-sub'>Enter your name to view your own records — your data is private</div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Privacy notice
+    st.markdown("""
+    <div style='background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;
+    padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:12px;'>
+      <span style='font-size:1.5rem;'>🔒</span>
+      <div>
+        <div style='font-weight:700;color:#1e40af;font-size:0.95rem;'>Your records are private</div>
+        <div style='color:#3b82f6;font-size:0.84rem;margin-top:2px;'>
+          Only your own records appear when you search your name. Full history is only accessible by the admin.
+        </div>
       </div>
     </div>
     """, unsafe_allow_html=True)
 
     if not os.path.exists(PATIENT_FILE):
         st.markdown("""
-        <div class='section-card' style='text-align:center;padding:48px;'>
+        <div style='text-align:center;padding:48px;background:#fff;border-radius:16px;'>
           <div style='font-size:3rem;margin-bottom:14px;'>📭</div>
           <div style='font-size:1.1rem;font-weight:600;color:#475569;'>No Records Yet</div>
-          <div style='color:#94a3b8;margin-top:6px;'>Prediction records will appear here after your first prediction.</div>
+          <div style='color:#94a3b8;margin-top:6px;'>Make a prediction first, then search your name here.</div>
         </div>
         """, unsafe_allow_html=True)
     else:
         df_h = pd.read_csv(PATIENT_FILE)
-        total = len(df_h)
-        high  = int((df_h["Risk Level"]=="High Risk").sum())   if "Risk Level" in df_h.columns else 0
-        med   = int((df_h["Risk Level"]=="Medium Risk").sum()) if "Risk Level" in df_h.columns else 0
-        low   = int((df_h["Risk Level"]=="Low Risk").sum())    if "Risk Level" in df_h.columns else 0
 
-        st.markdown(f"""
-        <div class='metric-row'>
-          <div class='metric-card'><div class='metric-val'>{total}</div><div class='metric-lbl'>Total Records</div></div>
-          <div class='metric-card' style='border-top-color:#dc2626;'><div class='metric-val' style='color:#dc2626;'>{high}</div><div class='metric-lbl'>High Risk</div></div>
-          <div class='metric-card' style='border-top-color:#d97706;'><div class='metric-val' style='color:#d97706;'>{med}</div><div class='metric-lbl'>Medium Risk</div></div>
-          <div class='metric-card' style='border-top-color:#16a34a;'><div class='metric-val' style='color:#16a34a;'>{low}</div><div class='metric-lbl'>Low Risk</div></div>
+        # Search box — user must type their name
+        search = st.text_input("🔍 Enter your full name to view your records",
+                               placeholder="e.g. Ahmed Raza",
+                               help="Type your exact name as entered during prediction")
+
+        if not search.strip():
+            st.markdown("""
+            <div style='text-align:center;padding:40px 20px;background:#fff;border-radius:16px;margin-top:10px;'>
+              <div style='font-size:2.5rem;margin-bottom:12px;'>🔍</div>
+              <div style='font-size:1rem;font-weight:600;color:#475569;'>Enter your name above</div>
+              <div style='color:#94a3b8;font-size:0.88rem;margin-top:6px;'>
+                Your prediction history will appear here once you type your name.
+              </div>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            filtered = df_h[df_h["Patient Name"].astype(str).str.lower() == search.strip().lower()]
+            if filtered.empty:
+                st.markdown(f"""
+                <div style='text-align:center;padding:40px;background:#fff;border-radius:16px;margin-top:10px;'>
+                  <div style='font-size:2.5rem;margin-bottom:12px;'>🚫</div>
+                  <div style='font-size:1rem;font-weight:600;color:#dc2626;'>No records found for "{search}"</div>
+                  <div style='color:#94a3b8;font-size:0.88rem;margin-top:6px;'>
+                    Make sure you enter your name exactly as used during prediction.
+                  </div>
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                # Show only safe columns — no clinical raw numbers exposed unnecessarily
+                show_cols = ["Date", "Patient Name", "Prediction", "Risk Level", "Risk Probability %"]
+                show_cols = [c for c in show_cols if c in filtered.columns]
+                st.markdown(f"""
+                <div class='metric-row'>
+                  <div class='metric-card'><div class='metric-val'>{len(filtered)}</div>
+                  <div class='metric-lbl'>Your Records</div></div>
+                  <div class='metric-card' style='border-top-color:#dc2626;'>
+                  <div class='metric-val' style='color:#dc2626;'>
+                  {int((filtered["Risk Level"]=="High Risk").sum()) if "Risk Level" in filtered.columns else 0}</div>
+                  <div class='metric-lbl'>High Risk</div></div>
+                  <div class='metric-card' style='border-top-color:#d97706;'>
+                  <div class='metric-val' style='color:#d97706;'>
+                  {int((filtered["Risk Level"]=="Medium Risk").sum()) if "Risk Level" in filtered.columns else 0}</div>
+                  <div class='metric-lbl'>Medium Risk</div></div>
+                  <div class='metric-card' style='border-top-color:#16a34a;'>
+                  <div class='metric-val' style='color:#16a34a;'>
+                  {int((filtered["Risk Level"]=="Low Risk").sum()) if "Risk Level" in filtered.columns else 0}</div>
+                  <div class='metric-lbl'>Low Risk</div></div>
+                </div>
+                """, unsafe_allow_html=True)
+
+                st.dataframe(
+                    filtered[show_cols].iloc[::-1].reset_index(drop=True),
+                    use_container_width=True, height=min(400, 80 + len(filtered)*40)
+                )
+                # Let user download only their own records
+                st.markdown("<div class='btn-pdf'>", unsafe_allow_html=True)
+                csv_bytes = filtered[show_cols].to_csv(index=False).encode()
+                st.download_button("📥 Download My Records (CSV)",
+                                   data=csv_bytes,
+                                   file_name=f"my_records_{search.strip().replace(' ','_')}.csv",
+                                   mime="text/csv", use_container_width=True)
+                st.markdown("</div>", unsafe_allow_html=True)
+
+        st.markdown("""
+        <div class='disclaimer' style='margin-top:20px;'>
+          🔐 <b>Privacy Note:</b> Only your own records are visible here.
+          Full patient data is restricted to the system administrator.
         </div>
         """, unsafe_allow_html=True)
-
-        st.markdown("<div class='section-card'>", unsafe_allow_html=True)
-        search = st.text_input("🔍 Search by patient name", placeholder="Type a name…")
-        filtered = df_h[df_h["Patient Name"].astype(str).str.contains(search, case=False)] if search else df_h
-        st.dataframe(filtered.tail(200).iloc[::-1].reset_index(drop=True),
-                     use_container_width=True, height=420)
-        csv_bytes = df_h.to_csv(index=False).encode()
-        st.download_button("📥 Export Full History as CSV", data=csv_bytes,
-                           file_name="patient_history.csv", mime="text/csv")
-        st.markdown("</div>", unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 #  PAGE 3 — ADMIN
@@ -668,6 +747,21 @@ elif st.session_state.page == "🔐 Admin Dashboard":
         if st.button("🚪 Logout"):
             st.session_state.admin_logged_in = False; st.rerun()
 
+        # ── Model Performance ─────────────────────────────────────────────
+        st.markdown("<div class='section-card'>", unsafe_allow_html=True)
+        st.markdown("<div class='section-title'>🎯 Model Performance (5-Fold Cross-Validation)</div>", unsafe_allow_html=True)
+        st.markdown(f"""
+        <div class='metric-row'>
+          <div class='metric-card'><div class='metric-val'>{metrics['acc']}%</div><div class='metric-lbl'>Accuracy</div></div>
+          <div class='metric-card'><div class='metric-val'>{metrics['prec']}%</div><div class='metric-lbl'>Precision</div></div>
+          <div class='metric-card'><div class='metric-val'>{metrics['rec']}%</div><div class='metric-lbl'>Recall</div></div>
+          <div class='metric-card'><div class='metric-val'>{metrics['f1']}%</div><div class='metric-lbl'>F1 Score</div></div>
+          <div class='metric-card'><div class='metric-val'>{n_rows}</div><div class='metric-lbl'>Training Patients</div></div>
+        </div>
+        """, unsafe_allow_html=True)
+        st.caption("Evaluated using 5-fold stratified cross-validation on deduplicated dataset. These are honest, non-leaked metrics.")
+        st.markdown("</div>", unsafe_allow_html=True)
+
         # Dataset stats
         df_raw = pd.read_csv("heart.csv")
         y_col = "target"
@@ -690,20 +784,23 @@ elif st.session_state.page == "🔐 Admin Dashboard":
         c1, c2 = st.columns(2)
         with c1:
             st.markdown("<div class='section-card'>", unsafe_allow_html=True)
-            st.markdown("<div class='section-title'>🎯 Model Performance (5-Fold CV)</div>", unsafe_allow_html=True)
-            st.markdown(f"""
-            <div class='metric-row' style='flex-direction:column;gap:10px;'>
-              <div style='display:flex;justify-content:space-between;padding:10px 14px;background:#f0f4ff;border-radius:8px;'>
-                <span style='font-weight:600;'>Accuracy</span><span style='font-weight:800;color:#1d4ed8;'>{metrics['acc']}%</span>
+            st.markdown("<div class='section-title'>📋 Model Algorithm Details</div>", unsafe_allow_html=True)
+            st.markdown("""
+            <div style='line-height:2;font-size:0.9rem;'>
+              <div style='display:flex;justify-content:space-between;padding:8px 12px;background:#f0f4ff;border-radius:8px;margin-bottom:6px;'>
+                <span style='font-weight:600;color:#0f172a;'>Algorithm</span><span style='color:#1d4ed8;font-weight:700;'>Logistic Regression</span>
               </div>
-              <div style='display:flex;justify-content:space-between;padding:10px 14px;background:#f0fdf4;border-radius:8px;'>
-                <span style='font-weight:600;'>Precision</span><span style='font-weight:800;color:#16a34a;'>{metrics['prec']}%</span>
+              <div style='display:flex;justify-content:space-between;padding:8px 12px;background:#f0fdf4;border-radius:8px;margin-bottom:6px;'>
+                <span style='font-weight:600;color:#0f172a;'>Regularization (C)</span><span style='color:#16a34a;font-weight:700;'>0.7</span>
               </div>
-              <div style='display:flex;justify-content:space-between;padding:10px 14px;background:#fff7ed;border-radius:8px;'>
-                <span style='font-weight:600;'>Recall</span><span style='font-weight:800;color:#d97706;'>{metrics['rec']}%</span>
+              <div style='display:flex;justify-content:space-between;padding:8px 12px;background:#fff7ed;border-radius:8px;margin-bottom:6px;'>
+                <span style='font-weight:600;color:#0f172a;'>Solver</span><span style='color:#d97706;font-weight:700;'>liblinear</span>
               </div>
-              <div style='display:flex;justify-content:space-between;padding:10px 14px;background:#fdf4ff;border-radius:8px;'>
-                <span style='font-weight:600;'>F1 Score</span><span style='font-weight:800;color:#7c3aed;'>{metrics['f1']}%</span>
+              <div style='display:flex;justify-content:space-between;padding:8px 12px;background:#fdf4ff;border-radius:8px;margin-bottom:6px;'>
+                <span style='font-weight:600;color:#0f172a;'>Class Weight</span><span style='color:#7c3aed;font-weight:700;'>Balanced</span>
+              </div>
+              <div style='display:flex;justify-content:space-between;padding:8px 12px;background:#f0f4ff;border-radius:8px;'>
+                <span style='font-weight:600;color:#0f172a;'>Preprocessing</span><span style='color:#1d4ed8;font-weight:700;'>StandardScaler + Median Imputer</span>
               </div>
             </div>
             """, unsafe_allow_html=True)
