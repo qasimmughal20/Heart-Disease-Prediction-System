@@ -75,23 +75,6 @@ pyttsx3: Text-to-speech (optional)
 
 
 
-⚠️ Medical Disclaimer
-
-IMPORTANT: This is an educational and research tool only.
-
-❌ NOT a certified medical device
-
-❌ NOT FDA approved
-
-❌ NOT for clinical diagnosis
-
-✅ DO consult a qualified healthcare professional
-
-✅ DO use for educational purposes
-
-✅ DO use for research and learning
-
-
 ⭐ Show Your Support
 
 If you found this project helpful, please give it a ⭐ on GitHub!
