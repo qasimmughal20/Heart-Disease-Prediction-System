@@ -879,7 +879,7 @@ elif st.session_state.page == L["nav_hist"]:
                 st.markdown(f"""
                 <div style='text-align:center;padding:40px;background:#fff;border-radius:16px;margin-top:10px;'>
                   <div style='font-size:2.5rem;margin-bottom:12px;'>🚫</div>
-                  <div style='font-size:1rem;font-weight:600;color:#dc2626;'>{L["no_records"]} "{search}"</div>
+                  <div style='font-size:1rem;font-weight:600;color:#dc2626;'>{L["no_records"]} "{search_id or search_name}"</div>
                   <div style='color:#94a3b8;font-size:0.88rem;margin-top:6px;'>{L["no_records_sub"]}</div>
                 </div>""", unsafe_allow_html=True)
             else:
