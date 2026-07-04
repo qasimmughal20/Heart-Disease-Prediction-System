@@ -14,6 +14,14 @@ Professional Streamlit Web App with:
 import os, io, csv, datetime as dt, urllib.parse
 import pandas as pd
 import streamlit as st
+
+# Google Sheets (used on Streamlit Cloud — falls back to CSV locally)
+try:
+    import gspread
+    from google.oauth2.service_account import Credentials
+    GSPREAD_OK = True
+except ImportError:
+    GSPREAD_OK = False
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
@@ -316,16 +324,71 @@ def explanation(values):
     if not reasons: reasons.append("values close to healthy reference ranges")
     return "Result influenced by: " + ", ".join(reasons) + ". This is a screening result, not a final diagnosis."
 
+# ── Google Sheets helpers ──────────────────────────────────────────
+@st.cache_resource(show_spinner=False)
+def get_gsheet():
+    """Connect to Google Sheet using Streamlit secrets. Returns sheet or None."""
+    if not GSPREAD_OK: return None
+    try:
+        scopes = ["https://spreadsheets.google.com/feeds","https://www.googleapis.com/auth/drive"]
+        creds  = Credentials.from_service_account_info(dict(st.secrets["gcp_service_account"]), scopes=scopes)
+        client = gspread.authorize(creds)
+        sheet  = client.open_by_key(st.secrets["sheet_id"]).sheet1
+        return sheet
+    except Exception:
+        return None
+
+def read_all_records():
+    """Read all patient records — from Google Sheet if available, else local CSV."""
+    sheet = get_gsheet()
+    if sheet is not None:
+        try:
+            data = sheet.get_all_records()
+            return pd.DataFrame(data) if data else pd.DataFrame()
+        except Exception:
+            pass
+    # Fallback: local CSV
+    if os.path.exists(PATIENT_FILE):
+        try:
+            return pd.read_csv(PATIENT_FILE, on_bad_lines="skip", engine="python")
+        except Exception:
+            pass
+    return pd.DataFrame()
+
+def generate_patient_id():
+    """Generate next serial Patient ID: CARD-0001, CARD-0002 …"""
+    df = read_all_records()
+    if df.empty or "Patient ID" not in df.columns:
+        return "CARD-0001"
+    nums = []
+    for pid in df["Patient ID"].dropna().astype(str):
+        if pid.startswith("CARD-") and pid[5:].isdigit():
+            nums.append(int(pid[5:]))
+    return f"CARD-{(max(nums)+1 if nums else 1):04d}"
+
 def save_record(name, contact, values, pred_text, prob, level, notes="", bmi=None):
-    # Clean notes — strip newlines/commas so CSV stays clean
     clean_notes = notes.replace("\n"," ").replace("\r"," ").strip()
-    patient_id = generate_patient_id()
+    patient_id  = generate_patient_id()
     row = {"Patient ID": patient_id,
            "Date": dt.datetime.now().strftime("%Y-%m-%d %H:%M"),
            "Patient Name": name, "Contact": contact, **values,
            "BMI": round(bmi,1) if bmi else "",
            "Doctor Notes": clean_notes,
-           "Prediction": pred_text, "Risk Probability %": round(prob*100,2), "Risk Level": level}
+           "Prediction": pred_text,
+           "Risk Probability %": round(prob*100,2),
+           "Risk Level": level}
+    # Try Google Sheets first
+    sheet = get_gsheet()
+    if sheet is not None:
+        try:
+            existing = sheet.get_all_records()
+            if not existing:
+                sheet.append_row(list(row.keys()))
+            sheet.append_row([str(v) for v in row.values()])
+            return patient_id
+        except Exception:
+            pass
+    # Fallback: local CSV
     exists = os.path.exists(PATIENT_FILE)
     with open(PATIENT_FILE, "a", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=list(row.keys()), quoting=csv.QUOTE_ALL)
@@ -387,23 +450,7 @@ def make_pdf(report):
     doc.build(story)
     return buf.getvalue()
 
-def generate_patient_id():
-    """Generate next serial Patient ID like CARD-0001, CARD-0002 …"""
-    if not os.path.exists(PATIENT_FILE):
-        return "CARD-0001"
-    try:
-        df = pd.read_csv(PATIENT_FILE, on_bad_lines="skip", engine="python")
-        if "Patient ID" not in df.columns or df.empty:
-            return "CARD-0001"
-        existing = df["Patient ID"].dropna().astype(str)
-        nums = []
-        for pid in existing:
-            if pid.startswith("CARD-") and pid[5:].isdigit():
-                nums.append(int(pid[5:]))
-        next_num = max(nums) + 1 if nums else 1
-        return f"CARD-{next_num:04d}"
-    except Exception:
-        return "CARD-0001"
+# generate_patient_id() now defined above with Google Sheets support
 
 # ══════════════════════════════════════════════════════════════════════
 #  SESSION STATE
@@ -610,8 +657,10 @@ if st.session_state.page == L["nav_pred"]:
         for col, idx, css in [(d1,0,"btn-high"),(d2,1,"btn-mid"),(d3,2,"btn-low")]:
             with col:
                 st.markdown(f"<div class='{css}'>", unsafe_allow_html=True)
-                if st.button(sample_items[idx][0], use_container_width=True):
-                    st.session_state.demo_loaded = sample_items[idx][1]; st.rerun()
+                if st.button(sample_items[idx][0], use_container_width=True, key=f"demo_{idx}"):
+                    st.session_state.demo_loaded = sample_items[idx][1]
+                    st.session_state.form_key += 1  # forces widgets to recreate with demo values
+                    st.rerun()
                 st.markdown("</div>", unsafe_allow_html=True)
 
     # ── RIGHT COLUMN ───────────────────────────────────────────────────
@@ -701,12 +750,12 @@ if st.session_state.page == L["nav_pred"]:
         # PDF + WhatsApp
         if report:
             st.markdown("<div class='btn-pdf'>", unsafe_allow_html=True)
-            if REPORTLAB_OK:
+            try:
                 pdf_bytes = make_pdf(report)
                 fname = f"CardioScan_{report['name'].replace(' ','_')}_{dt.datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
                 st.download_button(L["pdf"], data=pdf_bytes, file_name=fname, mime="application/pdf", use_container_width=True)
-            else:
-                st.warning("Run: pip install reportlab  to enable PDF.")
+            except Exception as pdf_err:
+                st.warning(f"PDF unavailable: {pdf_err}")
             st.markdown("</div>", unsafe_allow_html=True)
 
             # WhatsApp share button
@@ -780,7 +829,8 @@ elif st.session_state.page == L["nav_hist"]:
       </div>
     </div>""", unsafe_allow_html=True)
 
-    if not os.path.exists(PATIENT_FILE):
+    df_h = read_all_records()
+    if df_h.empty:
         st.markdown(f"""
         <div style='text-align:center;padding:48px;background:#fff;border-radius:16px;'>
           <div style='font-size:3rem;margin-bottom:14px;'>📭</div>
@@ -788,13 +838,17 @@ elif st.session_state.page == L["nav_hist"]:
           <div style='color:#94a3b8;margin-top:6px;'>{L["no_file_sub"]}</div>
         </div>""", unsafe_allow_html=True)
     else:
-        df_h = pd.read_csv(PATIENT_FILE, on_bad_lines="skip", engine="python")
         # Search by Patient ID (primary) or Name (secondary)
-        col_id, col_name = st.columns([1,1], gap="small")
+        col_id, col_name, col_btn = st.columns([1,1,0.4], gap="small")
         search_id   = col_id.text_input("🪪 Search by Patient ID", placeholder="e.g. CARD-0001").strip()
         search_name = col_name.text_input(L["search_label"], placeholder=L["search_ph"]).strip()
+        col_btn.markdown("<br>", unsafe_allow_html=True)
+        search_clicked = col_btn.button("🔍 Search", use_container_width=True, type="primary")
 
-        if not search_id and not search_name:
+        # Search fires on button click OR on Enter (when either field has value)
+        do_search = search_clicked or bool(search_id or search_name)
+
+        if not do_search or (not search_id and not search_name):
             st.markdown(f"""
             <div style='background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;
                  padding:16px 20px;margin:12px 0;display:flex;gap:14px;align-items:flex-start;'>
@@ -954,10 +1008,10 @@ elif st.session_state.page == L["nav_admin"]:
             st.dataframe(avg_df, use_container_width=True, hide_index=True)
             st.markdown("</div>", unsafe_allow_html=True)
 
-        if os.path.exists(PATIENT_FILE):
+        df_p = read_all_records()
+        if not df_p.empty:
             st.markdown("<div class='section-card'>", unsafe_allow_html=True)
             st.markdown("<div class='section-title'>🏥 All Prediction Records</div>", unsafe_allow_html=True)
-            df_p = pd.read_csv(PATIENT_FILE, on_bad_lines="skip", engine="python")
             st.dataframe(df_p.tail(100).iloc[::-1].reset_index(drop=True), use_container_width=True, height=320)
             st.download_button("📥 Download All Records", data=df_p.to_csv(index=False).encode(),
                                file_name="all_prediction_records.csv", mime="text/csv")
